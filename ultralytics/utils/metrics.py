@@ -138,23 +138,23 @@ def bbox_iou(
                 (b2_x1 + b2_x2 - b1_x1 - b1_x2).pow(2) + (b2_y1 + b2_y2 - b1_y1 - b1_y2).pow(2)
             ) / 4  # center dist**2
 
-            #=======================================================================
+            # =======================================================================
             # the updated math for loss calculation using ASIOU is as follows:
             if ASIoU:
                 # print("ASIoU MATH IS EXECUTING!")
-                #standard distance penalty
+                # standard distance penalty
                 r_dist = rho2 / c2
-                
+
                 # frequency specific penalty (Y-axis distance squared)
                 rho2_y = ((b2_y1 + b2_y2 - b1_y1 - b1_y2).pow(2)) / 4
 
                 # lambda frequency multiplier (can be tuned like 2.0,3.0,5.0, etc.)
-                lambda_freq = 2.0 
+                lambda_freq = 2.0
                 freq_penalty = lambda_freq * (rho2_y / (ch.pow(2) + eps))
 
                 # Return IoU minus the combined penalties
                 return iou - (r_dist + freq_penalty)
-            #=======================================================================
+            # =======================================================================
 
             if CIoU:  # https://github.com/Zzh-tju/DIoU-SSD-pytorch/blob/master/utils/box/box_utils.py#L47
                 v = (4 / math.pi**2) * ((w2 / h2).atan() - (w1 / h1).atan()).pow(2)
