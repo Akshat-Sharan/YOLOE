@@ -144,12 +144,12 @@ def bbox_iou(
             #     # print("ASIoU MATH IS EXECUTING!")
             #     #standard distance penalty
             #     r_dist = rho2 / c2
-                
+
             #     # frequency specific penalty (Y-axis distance squared)
             #     rho2_y = ((b2_y1 + b2_y2 - b1_y1 - b1_y2).pow(2)) / 4
 
             #     # lambda frequency multiplier (can be tuned like 2.0,3.0,5.0, etc.)
-            #     lambda_freq = 2.0 
+            #     lambda_freq = 2.0
             #     freq_penalty = lambda_freq * (rho2_y / (ch.pow(2) + eps))
 
             #     # Return IoU minus the combined penalties
@@ -174,7 +174,7 @@ def bbox_iou(
             #     return 1 - asiou_loss  # return as similarity for pipeline
             # #=======================================================================
 
-            #=======================================================================
+            # =======================================================================
             # ASIoU (Formula 2): loss = (1 - IoU) + lambda * (|y_pred - y_gt| / H)
             # We return similarity = IoU - lambda*(|y_pred - y_gt| / H)
             # so pipeline's (1 - similarity) reconstructs the exact Formula 2 loss.
@@ -192,7 +192,7 @@ def bbox_iou(
 
                 # Return as similarity: IoU - lambda * (|y_pred - y_gt| / H)
                 return iou - lambda_freq * ((y_pred - y_gt).pow(2) / (H.pow(2) + eps))
-            #=======================================================================
+            # =======================================================================
 
             if CIoU:  # https://github.com/Zzh-tju/DIoU-SSD-pytorch/blob/master/utils/box/box_utils.py#L47
                 v = (4 / math.pi**2) * ((w2 / h2).atan() - (w1 / h1).atan()).pow(2)

@@ -1,8 +1,12 @@
 """Scan dataset for corrupted or unreadable images and optionally remove them."""
+
+from __future__ import annotations
+
 import os
 import sys
-from pathlib import Path
 from multiprocessing import Pool, cpu_count
+from pathlib import Path
+
 from PIL import Image
 
 # Suppress PIL decompression bomb warning for large images
@@ -32,7 +36,7 @@ def check_image(img_path: str) -> tuple[str, str] | None:
 
 def find_all_images(root_dir: str) -> list[str]:
     """Recursively find all image files."""
-    extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff', '.webp'}
+    extensions = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
     images = []
     for dirpath, _, filenames in os.walk(root_dir):
         for f in filenames:
@@ -64,9 +68,9 @@ def main():
                 corrupt.append(result)
                 print(f"  CORRUPT: {result[0]} — {result[1]}", flush=True)
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Results: {len(corrupt)} corrupt out of {len(images)} total images")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     if not corrupt:
         print("All images are valid!")
@@ -79,7 +83,7 @@ def main():
         print(f"    Error: {error}")
 
     # Ask to remove
-    print(f"\nTo remove corrupt images and their labels, run:")
+    print("\nTo remove corrupt images and their labels, run:")
     print(f"  python {sys.argv[0]} --remove")
 
     if "--remove" in sys.argv:
@@ -94,7 +98,7 @@ def main():
 
             # Remove corresponding label file
             label_path = path.replace("/images/", "/labels/")
-            for ext in ['.txt']:
+            for ext in [".txt"]:
                 lp = str(Path(label_path).with_suffix(ext))
                 if os.path.exists(lp):
                     try:
