@@ -138,22 +138,60 @@ def bbox_iou(
                 (b2_x1 + b2_x2 - b1_x1 - b1_x2).pow(2) + (b2_y1 + b2_y2 - b1_y1 - b1_y2).pow(2)
             ) / 4  # center dist**2
 
-            #=======================================================================
-            # the updated math for loss calculation using ASIOU is as follows:
-            if ASIoU:
-                # print("ASIoU MATH IS EXECUTING!")
-                #standard distance penalty
-                r_dist = rho2 / c2
+            # #=======================================================================
+            # # the updated math for loss calculation using ASIOU is as follows:
+            # if ASIoU:
+            #     # print("ASIoU MATH IS EXECUTING!")
+            #     #standard distance penalty
+            #     r_dist = rho2 / c2
                 
-                # frequency specific penalty (Y-axis distance squared)
-                rho2_y = ((b2_y1 + b2_y2 - b1_y1 - b1_y2).pow(2)) / 4
+            #     # frequency specific penalty (Y-axis distance squared)
+            #     rho2_y = ((b2_y1 + b2_y2 - b1_y1 - b1_y2).pow(2)) / 4
 
-                # lambda frequency multiplier (can be tuned like 2.0,3.0,5.0, etc.)
-                lambda_freq = 2.0 
-                freq_penalty = lambda_freq * (rho2_y / (ch.pow(2) + eps))
+            #     # lambda frequency multiplier (can be tuned like 2.0,3.0,5.0, etc.)
+            #     lambda_freq = 2.0 
+            #     freq_penalty = lambda_freq * (rho2_y / (ch.pow(2) + eps))
 
-                # Return IoU minus the combined penalties
-                return iou - (r_dist + freq_penalty)
+            #     # Return IoU minus the combined penalties
+            #     return iou - (r_dist + freq_penalty)
+            # #=======================================================================
+
+            # #=======================================================================
+            # # ASIoU loss: (1-lambda)*(1-IOU) + lambda*(|ypred - ygt| / H)
+            # if ASIoU:
+            #     # y-centers of predicted and ground truth boxes
+            #     y_pred = (b1_y1 + b1_y2) / 2
+            #     y_gt = (b2_y1 + b2_y2) / 2
+
+            #     # H = convex height (smallest enclosing box height)
+            #     H = ch
+
+            #     # lambda weighting factor (tunable, e.g. 0.5)
+            #     lambda_freq = 0.5
+
+            #     # ASIoU = (1 - lambda) * (1 - IoU) + lambda * (|ypred - ygt| / H)
+            #     asiou_loss = (1 - lambda_freq) * (1 - iou) + lambda_freq * (torch.abs(y_pred - y_gt) / (H + eps))
+            #     return 1 - asiou_loss  # return as similarity for pipeline
+            # #=======================================================================
+
+            #=======================================================================
+            # ASIoU (Formula 2): loss = (1 - IoU) + lambda * (|y_pred - y_gt| / H)
+            # We return similarity = IoU - lambda*(|y_pred - y_gt| / H)
+            # so pipeline's (1 - similarity) reconstructs the exact Formula 2 loss.
+            if ASIoU:
+                # y-centers of predicted and ground truth boxes
+                # print("ASIoU MATH IS EXECUTING!")
+                y_pred = (b1_y1 + b1_y2) / 2
+                y_gt = (b2_y1 + b2_y2) / 2
+
+                # H = convex height (smallest enclosing box height)
+                H = ch
+
+                # lambda weighting factor (tunable)
+                lambda_freq = 0.5
+
+                # Return as similarity: IoU - lambda * (|y_pred - y_gt| / H)
+                return iou - lambda_freq * ((y_pred - y_gt).pow(2) / (H.pow(2) + eps))
             #=======================================================================
 
             if CIoU:  # https://github.com/Zzh-tju/DIoU-SSD-pytorch/blob/master/utils/box/box_utils.py#L47
