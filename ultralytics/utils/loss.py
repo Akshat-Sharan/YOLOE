@@ -109,7 +109,7 @@ class DFLoss(nn.Module):
 class BboxLoss(nn.Module):
     """Criterion class for computing training losses for bounding boxes."""
 
-    def __init__(self, reg_max: int = 16, asiou_mode: "bool | str" = True):
+    def __init__(self, reg_max: int = 16, asiou_mode: bool | str = True):
         """Initialize the BboxLoss module with regularization maximum and DFL settings."""
         super().__init__()
         self.asiou_mode = asiou_mode
@@ -358,7 +358,7 @@ class v8DetectionLoss:
             stride=self.stride.tolist(),
             topk2=tal_topk2,
         )
-        self.asiou_mode = getattr(h, 'asiou_mode', True)  # default to original ASIoU
+        self.asiou_mode = getattr(h, "asiou_mode", True)  # default to original ASIoU
         self.bbox_loss = BboxLoss(m.reg_max, asiou_mode=self.asiou_mode).to(device)
         self.proj = torch.arange(m.reg_max, dtype=torch.float, device=device)
 

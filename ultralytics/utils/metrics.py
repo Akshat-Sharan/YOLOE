@@ -85,7 +85,7 @@ def bbox_iou(
     GIoU: bool = False,
     DIoU: bool = False,
     CIoU: bool = False,
-    ASIoU: "bool | str" = False,
+    ASIoU: bool | str = False,
     eps: float = 1e-7,
 ) -> torch.Tensor:
     """Calculate the Intersection over Union (IoU) between bounding boxes.
@@ -144,7 +144,7 @@ def bbox_iou(
             #     # print("ASIoU MATH IS EXECUTING!")
             #     #standard distance penalty
             #     r_dist = rho2 / c2
-                
+
             #     # frequency specific penalty (Y-axis distance squared)
             #     rho2_y = ((b2_y1 + b2_y2 - b1_y1 - b1_y2).pow(2)) / 4
 
@@ -156,9 +156,9 @@ def bbox_iou(
             #     return iou - (r_dist + freq_penalty)
             # #=======================================================================
 
-            #===============================================================================
+            # ===============================================================================
             # ASIoU variants
-            #===============================================================================
+            # ===============================================================================
             if ASIoU:
                 # lambda weighting factor (tunable)
                 lambda_freq = 2.0
@@ -166,7 +166,7 @@ def bbox_iou(
                 # ---- lambda-eiou ----
                 # loss = (1 - IoU) + ||b-b_t||²/c² + ||w-w_t||²/c_w² + λ*||h-h_t||²/c_h²
                 # similarity = IoU - (center_penalty + width_penalty + λ*height_penalty)
-                if ASIoU == 'lambda-eiou':
+                if ASIoU == "lambda-eiou":
                     # center distance penalty (rho2 / c2 already available)
                     center_penalty = rho2 / c2
 
@@ -181,7 +181,7 @@ def bbox_iou(
                 # ---- lambda-half-eiou ----
                 # Same structure but numerators use half-values (center/2, w/2, h/2)
                 # loss = (1 - IoU) + ||b^c-b_t^c||²/c² + ||w^c-w_t^c||²/c_w² + λ*||h^c-h_t^c||²/c_h²
-                elif ASIoU == 'lambda-half-eiou':
+                elif ASIoU == "lambda-half-eiou":
                     # half-center distance penalty: ||b/2 - b_t/2||² / c²
                     # = ((x_pred - x_gt)² + (y_pred - y_gt)²) / 4 / c²  = rho2 / 4 / c2
                     center_penalty = (rho2 / 4) / c2
@@ -207,7 +207,7 @@ def bbox_iou(
 
                     # Return as similarity: IoU - lambda * ((y_pred - y_gt)^2 / H^2)
                     return iou - lambda_freq * ((y_pred - y_gt).pow(2) / (H.pow(2) + eps))
-            #===============================================================================
+            # ===============================================================================
 
             # #=======================================================================
             # # ASIoU loss: (1-lambda)*(IOU) - lambda*((ypred - ygt)^2 / H^2)
