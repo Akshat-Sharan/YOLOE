@@ -85,7 +85,7 @@ def bbox_iou(
     GIoU: bool = False,
     DIoU: bool = False,
     CIoU: bool = False,
-    ASIoU: bool = False,
+    ASIoU: bool | str = False,
     eps: float = 1e-7,
 ) -> torch.Tensor:
     """Calculate the Intersection over Union (IoU) between bounding boxes.
@@ -138,23 +138,94 @@ def bbox_iou(
                 (b2_x1 + b2_x2 - b1_x1 - b1_x2).pow(2) + (b2_y1 + b2_y2 - b1_y1 - b1_y2).pow(2)
             ) / 4  # center dist**2
 
-            #=======================================================================
-            # the updated math for loss calculation using ASIOU is as follows:
+            # #=======================================================================
+            # # the updated math for loss calculation using ASIOU is as follows:
+            # if ASIoU:
+            #     # print("ASIoU MATH IS EXECUTING!")
+            #     #standard distance penalty
+            #     r_dist = rho2 / c2
+
+            #     # frequency specific penalty (Y-axis distance squared)
+            #     rho2_y = ((b2_y1 + b2_y2 - b1_y1 - b1_y2).pow(2)) / 4
+
+            #     # lambda frequency multiplier (can be tuned like 2.0,3.0,5.0, etc.)
+            #     lambda_freq = 0.2 #changed it from 2.0 to 0.2
+            #     freq_penalty = lambda_freq * (rho2_y / (ch.pow(2) + eps))
+
+            #     # Return IoU minus the combined penalties
+            #     return iou - (r_dist + freq_penalty)
+            # #=======================================================================
+
+            # ===============================================================================
+            # ASIoU variants
+            # ===============================================================================
             if ASIoU:
-                # print("ASIoU MATH IS EXECUTING!")
-                #standard distance penalty
-                r_dist = rho2 / c2
-                
-                # frequency specific penalty (Y-axis distance squared)
-                rho2_y = ((b2_y1 + b2_y2 - b1_y1 - b1_y2).pow(2)) / 4
+                # lambda weighting factor (tunable)
+                lambda_freq = 2.0
 
-                # lambda frequency multiplier (can be tuned like 2.0,3.0,5.0, etc.)
-                lambda_freq = 2.0 
-                freq_penalty = lambda_freq * (rho2_y / (ch.pow(2) + eps))
+                # ---- lambda-eiou ----
+                # loss = (1 - IoU) + ||b-b_t||²/c² + ||w-w_t||²/c_w² + λ*||h-h_t||²/c_h²
+                # similarity = IoU - (center_penalty + width_penalty + λ*height_penalty)
+                if ASIoU == "lambda-eiou":
+                    # center distance penalty (rho2 / c2 already available)
+                    center_penalty = rho2 / c2
 
-                # Return IoU minus the combined penalties
-                return iou - (r_dist + freq_penalty)
-            #=======================================================================
+                    # width penalty: ||w - w_t||² / c_w²
+                    width_penalty = (w1 - w2).pow(2) / (cw.pow(2) + eps)
+
+                    # height penalty: λ * ||h - h_t||² / c_h²
+                    height_penalty = lambda_freq * (h1 - h2).pow(2) / (ch.pow(2) + eps)
+
+                    return iou - (center_penalty + width_penalty + height_penalty)
+
+                # ---- lambda-half-eiou ----
+                # Same structure but numerators use half-values (center/2, w/2, h/2)
+                # loss = (1 - IoU) + ||b^c-b_t^c||²/c² + ||w^c-w_t^c||²/c_w² + λ*||h^c-h_t^c||²/c_h²
+                elif ASIoU == "lambda-half-eiou":
+                    # half-center distance penalty: ||b/2 - b_t/2||² / c²
+                    # = ((x_pred - x_gt)² + (y_pred - y_gt)²) / 4 / c²  = rho2 / 4 / c2
+                    center_penalty = (rho2 / 4) / c2
+
+                    # half-width penalty: ||(w/2 - w_t/2)||² / c_w²
+                    w1_c, w2_c = w1 / 2, w2 / 2
+                    width_penalty = (w1_c - w2_c).pow(2) / (cw.pow(2) + eps)
+
+                    # half-height penalty: λ * ||(h/2 - h_t/2)||² / c_h²
+                    h1_c, h2_c = h1 / 2, h2 / 2
+                    height_penalty = lambda_freq * (h1_c - h2_c).pow(2) / (ch.pow(2) + eps)
+
+                    return iou - (center_penalty + width_penalty + height_penalty)
+
+                # ---- original ASIoU (default when ASIoU=True) ----
+                else:
+                    # y-centers of predicted and ground truth boxes
+                    y_pred = (b1_y1 + b1_y2) / 2
+                    y_gt = (b2_y1 + b2_y2) / 2
+
+                    # H = convex height (smallest enclosing box height)
+                    H = ch
+
+                    # Return as similarity: IoU - lambda * ((y_pred - y_gt)^2 / H^2)
+                    return iou - lambda_freq * ((y_pred - y_gt).pow(2) / (H.pow(2) + eps))
+            # ===============================================================================
+
+            # #=======================================================================
+            # # ASIoU loss: (1-lambda)*(IOU) - lambda*((ypred - ygt)^2 / H^2)
+            # if ASIoU:
+            #     # y-centers of predicted and ground truth boxes
+            #     y_pred = (b1_y1 + b1_y2) / 2
+            #     y_gt = (b2_y1 + b2_y2) / 2
+
+            #     # H = convex height (smallest enclosing box height)
+            #     H = ch
+
+            #     # lambda weighting factor (tunable, e.g. 0.5)
+            #     lambda_freq = 0.2
+
+            #     # ASIoU = (1 - lambda) * (1 - IoU) + lambda * (|ypred - ygt| / H)
+            #     asiou_loss = (1 - lambda_freq) * (iou) - lambda_freq * ((y_pred - y_gt).pow(2) / 2.0)
+            #     return asiou_loss  # return as similarity for pipeline
+            # #=======================================================================
 
             if CIoU:  # https://github.com/Zzh-tju/DIoU-SSD-pytorch/blob/master/utils/box/box_utils.py#L47
                 v = (4 / math.pi**2) * ((w2 / h2).atan() - (w1 / h1).atan()).pow(2)

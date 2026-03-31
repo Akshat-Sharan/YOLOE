@@ -109,9 +109,10 @@ class DFLoss(nn.Module):
 class BboxLoss(nn.Module):
     """Criterion class for computing training losses for bounding boxes."""
 
-    def __init__(self, reg_max: int = 16):
+    def __init__(self, reg_max: int = 16, asiou_mode: bool | str = True):
         """Initialize the BboxLoss module with regularization maximum and DFL settings."""
         super().__init__()
+        self.asiou_mode = asiou_mode
         self.dfl_loss = DFLoss(reg_max) if reg_max > 1 else None
 
     def forward(
@@ -128,7 +129,7 @@ class BboxLoss(nn.Module):
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Compute IoU and DFL losses for bounding boxes."""
         weight = target_scores.sum(-1)[fg_mask].unsqueeze(-1)
-        iou = bbox_iou(pred_bboxes[fg_mask], target_bboxes[fg_mask], xywh=False, CIoU=False, ASIoU=True) # enable ASIoU to make the model use ASIoU loss function
+        iou = bbox_iou(pred_bboxes[fg_mask], target_bboxes[fg_mask], xywh=False, CIoU=False, ASIoU=self.asiou_mode)
         loss_iou = ((1.0 - iou) * weight).sum() / target_scores_sum
 
         # DFL loss
@@ -357,7 +358,8 @@ class v8DetectionLoss:
             stride=self.stride.tolist(),
             topk2=tal_topk2,
         )
-        self.bbox_loss = BboxLoss(m.reg_max).to(device)
+        self.asiou_mode = getattr(h, "asiou_mode", True)  # default to original ASIoU
+        self.bbox_loss = BboxLoss(m.reg_max, asiou_mode=self.asiou_mode).to(device)
         self.proj = torch.arange(m.reg_max, dtype=torch.float, device=device)
 
     def preprocess(self, targets: torch.Tensor, batch_size: int, scale_tensor: torch.Tensor) -> torch.Tensor:
